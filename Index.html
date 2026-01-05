@@ -7,9 +7,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-  
   <style>
-    /* Definisi variabel warna agar konsisten dan mudah diubah */
     :root {
       --bg-color: #F3E9DC;
       --accent-color: #C08552;
@@ -28,7 +26,6 @@
       margin: auto;
     }
 
-    /* Kustomisasi kartu (card) untuk wadah konten */
     .card {
       border: none;
       border-radius: 15px;
@@ -44,6 +41,22 @@
       text-align: center;
     }
 
+    .rules-container {
+      background: #fff;
+      border-left: 5px solid var(--accent-color);
+      padding: 15px;
+      font-size: 0.9rem;
+    }
+
+    .rules-container ul {
+      padding-left: 20px;
+      margin-bottom: 0;
+    }
+
+    .rules-container li {
+      margin-bottom: 8px;
+    }
+
     .btn-primary {
       background: var(--accent-color);
       border: none;
@@ -53,13 +66,15 @@
       border-radius: 10px;
     }
 
-    /* Kustomisasi gaya elemen kalender */
+    .btn-primary:hover {
+      background: var(--primary-color);
+    }
+
     #calendar {
       background: white;
       padding: 10px;
     }
 
-    /* Styling tombol navigasi FullCalendar (Prev, Next, Today) */
     .fc .fc-button-primary {
       background-color: var(--accent-color) !important;
       border-color: var(--accent-color) !important;
@@ -69,12 +84,15 @@
 
     .fc .fc-button-primary:hover {
       background-color: var(--primary-color) !important;
-      border-color: var(--primary-color) !important;
     }
 
     .fc .fc-toolbar-title {
       color: var(--primary-color) !important;
       font-weight: bold;
+    }
+
+    .wa-link {
+      color: black;
     }
   </style>
 </head>
@@ -87,6 +105,28 @@
         <h5 class="mb-0">📅 Jadwal Peminjaman</h5>
       </div>
       <div id="calendar"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header p-3">
+        <h5 class="mb-0">📜 Aturan Peminjaman</h5>
+      </div>
+      <div class="card-body rules-container">
+        <ul>
+          <li>Setiap peminjam cukup menuliskan <strong>nama kelompok</strong> saja (contoh : 86).</li>
+          <li>Konfirmasi dan pengambilan proyektor dilakukan melalui CP a/n. Putri di Pondokan Kelompok 86, dengan
+            menyerahkan <strong>KTM</strong> sebagai jaminan</li>
+          <li>Toleransi keterlambatan pengembalian <strong>maksimal 30 menit</strong> . Jika melebihi, peminjam wajib
+            mengantarkan ke kelompok berikutnya.</li>
+          <li>Kerusakan atau kehilangan menjadi <strong>tanggung jawab peminjam</strong>.</li>
+          <li>Jika terjadi benturan jadwal, akan dikonfirmasi oleh CP Kelompok 86.</li>
+          <li>Jika terjadi <strong>perubahan jadwal</strong> , silahkan mengkonfirmasi juga melalui CP dibawah ini.
+          </li>
+          <a href="https://wa.me/6285770652269" target="_blank" class="wa-link">CP:
+            <strong>+62 857-7065-2269 (Putri)</strong>
+          </a>
+        </ul>
+      </div>
     </div>
 
     <div class="card">
@@ -114,6 +154,14 @@
             <option value="19.00 - 21.00">🌙 Malam (19.00 - 21.00)</option>
           </select>
         </div>
+
+        <div class="form-check mb-4">
+          <input class="form-check-input" type="checkbox" id="checkAturan">
+          <label class="form-check-label small" for="checkAturan">
+            Saya telah membaca dan menyetujui aturan peminjaman di atas.
+          </label>
+        </div>
+
         <button id="btnPesan" onclick="kirim()" class="btn btn-primary">Konfirmasi Booking</button>
       </div>
     </div>
@@ -121,38 +169,28 @@
 
   <script>
     let calendar;
-    let slotTerpakai = {}; // Menyimpan data jam yang sudah dipesan dari server
-    let masterJam = [];    // Menyimpan template opsi jam asli
+    let slotTerpakai = {}; 
+    let masterJam = []; 
 
-    /**
-     * Inisialisasi awal saat halaman selesai dimuat
-     */
     document.addEventListener('DOMContentLoaded', function() {
       const selectWaktu = document.getElementById('waktu');
-      // Simpan daftar jam asli ke variabel masterJam agar bisa di-reset saat filter
       masterJam = Array.from(selectWaktu.options).map(o => ({ value: o.value, text: o.text }));
 
-      // Konfigurasi FullCalendar
       calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
         initialView: 'dayGridMonth',
-        locale: 'id', // Bahasa Indonesia
+        locale: 'id',
         dateClick: function(info) {
-          // Jika tanggal di kalender diklik, otomatis isi input tanggal dan filter jam
           document.getElementById('tanggal').value = info.dateStr;
           updateDropdown(info.dateStr);
         },
         events: function(info, success) {
-          // Mengambil data event/jadwal langsung dari Google Apps Script (ambilJadwal)
           google.script.run.withSuccessHandler(success).ambilJadwal();
         }
       });
       calendar.render();
-      updateDataTerpakai(); // Ambil data slot yang sudah terisi saat pertama buka
+      updateDataTerpakai();
     });
 
-    /**
-     * Memanggil fungsi server untuk mendapatkan data jam yang sudah dibooking
-     */
     function updateDataTerpakai() {
       google.script.run.withSuccessHandler(function(data) {
         slotTerpakai = data;
@@ -161,14 +199,10 @@
       }).ambilSlotTerpakai();
     }
 
-    /**
-     * Mengatur isi dropdown jam berdasarkan tanggal yang dipilih.
-     * Jam yang sudah dipesan akan dinonaktifkan (disabled).
-     */
     function updateDropdown(tanggalPilihan) {
       const select = document.getElementById('waktu');
       const jamTerpakai = slotTerpakai[tanggalPilihan] || [];
-      select.innerHTML = ''; // Kosongkan dropdown terlebih dahulu
+      select.innerHTML = ''; 
 
       masterJam.forEach(jam => {
         const opt = document.createElement('option');
@@ -179,7 +213,6 @@
           opt.disabled = true;
           opt.selected = true;
         } else if (jamTerpakai.includes(jam.value)) {
-          // Jika jam sudah ada dalam daftar terpakai, buat jadi tidak bisa dipilih
           opt.disabled = true;
           opt.text = jam.text + " ❌ (Sudah Dipesan)";
         }
@@ -187,41 +220,39 @@
       });
     }
 
-    // Listener jika user mengubah tanggal secara manual lewat input date
     document.getElementById('tanggal').addEventListener('change', function() {
       updateDropdown(this.value);
     });
 
-    /**
-     * Fungsi untuk mengirim data formulir ke Google Apps Script (simpanData)
-     */
     function kirim() {
       const btn = document.getElementById('btnPesan');
+      const isChecked = document.getElementById('checkAturan').checked;
       const data = {
         nama: document.getElementById('nama').value,
         tanggal: document.getElementById('tanggal').value,
         waktu: document.getElementById('waktu').value
       };
 
-      // Validasi sederhana di sisi client
       if (!data.nama || !data.tanggal || !data.waktu) {
         alert("Lengkapi semua data!"); return;
       }
+      
+      if (!isChecked) {
+        alert("Harap centang persetujuan aturan peminjaman!"); return;
+      }
 
-      // Berikan feedback visual loading
       btn.disabled = true;
       btn.innerText = "⏳ Menyimpan...";
 
       google.script.run.withSuccessHandler(function(res) {
-        alert(res); // Tampilkan pesan berhasil/gagal dari server
+        alert(res);
         btn.disabled = false;
         btn.innerText = "Konfirmasi Booking";
-        
         if (res.includes("BERHASIL")) {
-          // Reset form dan segarkan data jadwal jika berhasil
           document.getElementById('nama').value = '';
-          updateDataTerpakai(); // Refresh data slot terpakai
-          calendar.refetchEvents(); // Refresh tampilan kalender
+          document.getElementById('checkAturan').checked = false;
+          updateDataTerpakai();
+          calendar.refetchEvents();
         }
       }).simpanData(data);
     }
